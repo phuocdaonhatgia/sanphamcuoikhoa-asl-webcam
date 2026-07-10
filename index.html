@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>ASL Hand Sign Recognition</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="modal-backdrop" id="camModal">
+  <div class="modal">
+    <div class="modal-icon">📷</div>
+    <h2>Bật Camera?</h2>
+    <p>Ứng dụng cần truy cập webcam để nhận diện ký hiệu tay theo thời gian thực.<br/>Bạn có muốn bật camera ngay bây giờ không?</p>
+    <div class="modal-btns">
+      <button class="mbtn mbtn-yes" onclick="startCamera()">✅ Bật Camera</button>
+      <button class="mbtn mbtn-no"  onclick="dismissModal()">Để sau</button>
+    </div>
+  </div>
+</div>
+
+<header>
+  <div class="logo">✋ ASL<span>Sign</span></div>
+  <div class="hdr-right">
+    <div class="status">
+      <div class="dot" id="dot"></div>
+      <span id="statusTxt">Đang kết nối...</span>
+    </div>
+    <button class="cam-toggle off" id="camToggleBtn" onclick="toggleCamera()">
+      <span id="camToggleIcon">▶</span>
+      <span id="camToggleTxt">Bật Camera</span>
+    </button>
+  </div>
+</header>
+<main>
+  <div class="panel">
+    <div class="plabel">Nguồn nhận diện</div>
+
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('cam')">🎥 Webcam</div>
+      <div class="tab" onclick="switchTab('upload')">🖼 Upload ảnh</div>
+    </div>
+    <div class="tab-content active" id="tab-cam">
+      <div class="cam-wrap">
+        <div class="cam-off-screen" id="camOffScreen">
+          <div class="cam-off-icon">📷</div>
+          <div class="cam-off-text" id="camLoadingTxt">Camera đang tắt</div>
+          <button class="cam-off-btn" id="camOffBtn" onclick="startCamera()">▶ Bật Camera</button>
+        </div>
+        <img id="feed" src="" alt="camera" style="display:none"/>
+        <div class="cam-overlay hidden" id="camOverlay">
+          <div>
+            <div class="big-char" id="bigChar">—</div>
+            <div class="conf-label" id="confLabel">0%</div>
+          </div>
+          <div class="prog-wrap">
+            <span style="font-family:monospace;font-size:.6rem;color:var(--muted)">XÁC NHẬN</span>
+            <div class="prog-bar"><div class="prog-fill" id="progFill"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-sec" onclick="act('space')">␣ Space</button>
+        <button class="btn btn-sec" onclick="act('delete')">⌫ Xóa</button>
+        <button class="btn btn-warn" onclick="act('clear')">🗑 Clear</button>
+        <button class="btn btn-pri"  onclick="act('finish')">✅ Lưu câu</button>
+      </div>
+      <div class="guide">
+        <span>Đặt tay vào <b style="color:var(--accent)">khung xanh</b></span>·
+        <span>Giữ ~1 giây để xác nhận</span>
+      </div>
+      <div class="guide">
+        <kbd>Space</kbd> dấu cách &nbsp;
+        <kbd>Backspace</kbd> xóa &nbsp;
+        <kbd>Enter</kbd> lưu câu
+      </div>
+    </div>
+
+
+    <div class="tab-content" id="tab-upload">
+      <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+        <input type="file" id="fileInput" accept="image/*" onchange="handleFile(this.files[0])"/>
+        <div style="font-size:2rem;margin-bottom:8px">📁</div>
+        <div>Kéo thả ảnh vào đây hoặc <b style="color:var(--accent)">nhấn để chọn</b></div>
+        <div style="font-size:.75rem;margin-top:6px;color:var(--dim)">JPG, PNG — ảnh bàn tay ký hiệu ASL</div>
+      </div>
+      <div id="uploadSection" style="display:none;flex-direction:column;gap:10px">
+        <div class="preview-wrap"><img id="previewImg" src="" alt="preview"/></div>
+        <div class="upload-result" id="uploadResult">
+          <div class="ur-char" id="urChar">—</div>
+          <div id="top5Bars"></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-add" onclick="addFromUpload()">➕ Thêm ký tự này</button>
+          <button class="btn btn-sec"  onclick="resetUpload()">↩ Chọn ảnh khác</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <div class="panel">
+    <div class="plabel">Văn bản & NLP</div>
+
+    <div>
+      <div style="font-family:monospace;font-size:.63rem;color:var(--muted);margin-bottom:6px;letter-spacing:.1em">ĐANG GÕ</div>
+      <div class="typing-box">
+        <span id="typingTxt"></span><span class="cursor"></span>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-sec"  onclick="act('space')">␣</button>
+      <button class="btn btn-sec"  onclick="act('delete')">⌫</button>
+      <button class="btn btn-warn" onclick="act('clear')">🗑</button>
+      <button class="btn btn-pri"  onclick="act('finish')">✅ Lưu câu</button>
+    </div>
+
+    <div>
+      <div style="font-family:monospace;font-size:.63rem;color:var(--muted);margin-bottom:6px;letter-spacing:.1em">SAU XỬ LÝ</div>
+      <div class="corrected-box" id="correctedBox">—</div>
+    </div>
+
+    <div style="flex:1;display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <span style="font-family:monospace;font-size:.63rem;color:var(--muted);letter-spacing:.1em">CÂU ĐÃ HOÀN THÀNH</span>
+        <span id="sentCount" style="font-family:monospace;font-size:.7rem;background:var(--surf2);padding:2px 8px;border-radius:10px;color:var(--muted)">0 câu</span>
+      </div>
+      <div class="sent-list" id="sentList">
+        <span class="empty">Nhấn ✅ Lưu câu để lưu kết quả.</span>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<footer>ASL Hand Sign Recognition · Flask + OpenCV + TensorFlow</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
